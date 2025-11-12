@@ -1,5 +1,5 @@
 VENV = .venv
-MODULE = module
+MODULE = ad_checker
 
 $(VENV): setup.cfg
 	python3 -m venv $(VENV)

@@ -1,15 +1,24 @@
 VENV = .venv
 MODULE = ad_checker
 
-$(VENV): setup.cfg
+$(VENV): setup.cfg pyproject.toml
 	python3 -m venv $(VENV)
 	$(VENV)/bin/pip install -e .[dev]
 	touch $(VENV)
 
-.PHONY: run
-run: $(VENV)
-	$(VENV)/bin/python3 $(MODULE)/main.py
+.PHONY: capture_images
+capture_images: $(VENV)
+	$(VENV)/bin/python3 $(MODULE)/capture_images.py
 
+.PHONY: label_images
+label_images: $(VENV)
+	$(VENV)/bin/python3 $(MODULE)/label_images.py
+
+.PHONY: create_database
+create_database: $(VENV)
+	$(VENV)/bin/python3 $(MODULE)/database.py
+
+.PHONY: test
 .PHONY: test
 test: $(VENV)
 	# $(VENV)/bin/pytest $(MODULE)

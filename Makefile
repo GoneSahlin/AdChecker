@@ -14,15 +14,15 @@ capture_images: $(VENV)
 label_images: $(VENV)
 	$(VENV)/bin/python3 $(MODULE)/label_images.py
 
-.PHONY: create_database
-create_database: $(VENV)
+.PHONY: database
+database: $(VENV)
 	$(VENV)/bin/python3 $(MODULE)/database.py
 
 .PHONY: test
-.PHONY: test
 test: $(VENV)
+	$(VENV)/bin/pytest
 	# $(VENV)/bin/pytest $(MODULE)
-	$(VENV)/bin/python3 -m unittest discover test
+	# $(VENV)/bin/python3 -m unittest discover test
 
 .PHONY: lint
 lint: $(VENV)

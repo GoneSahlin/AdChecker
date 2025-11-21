@@ -1,63 +1,78 @@
 import os
 import cv2 as cv
 from datetime import datetime
+import numpy as np
 
-import utils
+from ad_checker import utils
+from ad_checker import database
 
 
 logger = utils.setup_logging('label_images.log')
 
 
-def load_labels() -> pl.DataFrame:
-    labels_filepath = os.path.join('data', 'labels', 'labels.parquet')
+def images_to_label(channel_name):
+    conn = database.connect()
+    cur = conn.cursor()
 
-    try:
-        df = pl.read_parquet(labels_filepath)
-    except FileNotFoundError as e:
-        schema = {'key': str, 'channel_name': str, 'filename': str, 'label': str, 'timestamp': datetime}
+    sql = '''
+        select image_id, content
+        from images
+        where label is null
+            and channel_name = ?
+        order by timestamp
+        limit 100
+        '''
 
-        df = pl.DataFrame(schema=schema)
+    cur.execute(sql, (channel_name,))
+    rows = cur.fetchall()
+    conn.close()
+
+    return rows
 
 
-    return df
+def insert_labels(labels_dict: dict[int, str]):
+    """Store labels_dict (image_id, label) in db"""
+    rows = [(item[1], item[0]) for item in labels_dict.items()]
+
+    conn = database.connect()
+    
+    sql = '''
+        update Images
+        set label = ?
+        where image_id = ?
+        '''
+
+    conn.executemany(sql, rows)
+    conn.commit()
+    conn.close()
 
 
 def label_images(channel_name):
-    logger.info('Starting')
+    logger.info('Getting images to label')
+    images = images_to_label(channel_name)
 
-    captured_images_dir = os.path.join('data', 'captured_images', channel_name)
+    labels_dict = {}
 
-    files = os.listdir(captured_images_dir)
-
-    labels_df = load_labels()
-
+    logger.info('Displaying images')
     i = 0
-    while i < len(files):
-        file = files[i]
-
-        if file in labels_df['filename']:
-            i += 1
-            continue
+    while i < len(images):
+        image_id, content = images[i]
 
         try:
-            filepath = os.path.join(captured_images_dir, file)
-
-            logger.info(f'Reading from {filepath}')
-            img = cv.imread(filepath)
-
-            assert img is not None, "file could not be read, check with os.path.exists()"
+            # display image
+            img = utils.bytes_to_image(content)
 
             cv.imshow('frame', img)
+            key_pressed = cv.waitKey(0)
 
-            labels_dict = {
+            # handle user input
+            input_mapping_dict = {
                 'a': 'ad',
                 'f': 'football',
                 'o': 'other',
             }
 
-            # handle user input
-            key_pressed = cv.waitKey(0)
-            while chr(key_pressed) not in labels_dict.keys() and chr(key_pressed) not in ['q', 'u']:
+            while chr(key_pressed) not in input_mapping_dict.keys() and chr(key_pressed) not in ['q', 'u']:
                 key_pressed = cv.waitKey(0)
 
             if key_pressed == ord('q'):
@@ -66,25 +81,26 @@ def label_images(channel_name):
                 i -= 1
                 continue
             else:
-                label = labels_dict[chr(key_pressed)]
+                label = input_mapping_dict[chr(key_pressed)]
 
-            logger.info(f'Marked {file} as {label}')
-
-            row = (channel_name + '|' + file, channel_name, file, label, datetime.now())
-
-
+            # save label to dict
+            logger.info(f'Labeling image {image_id} as {label}')
+            labels_dict[image_id] = label
 
             i += 1
-            
-
         except AssertionError as e:
             logger.error(e)
+
+    # save labels to db
+    logger.info('Saving labels to db')
+    insert_labels(labels_dict)
+
 
 
 if __name__ == '__main__':
     logger.info('Starting')
-    raise Exception('Test Error')
-
     
     label_images('fox_sports_1')
+
+    logger.info('Ending')
 

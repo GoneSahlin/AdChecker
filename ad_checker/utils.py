@@ -2,6 +2,9 @@ import cv2 as cv
 import requests
 import logging
 import os
+import numpy as np
+
+logger = logging.getLogger('__main__')
 
 
 def setup_logging(filename, name=__name__):
@@ -101,5 +104,13 @@ def play_video(url):
         else: 
             break
 
+
+def bytes_to_image(image_bytes):
+    logger.info('Converting bytes to image')
+    image_array = np.asarray(bytearray(image_bytes))
+    image = cv.imdecode(buf=image_array, flags=cv.IMREAD_COLOR)
+
+    assert image is not None
+    return image
 
 

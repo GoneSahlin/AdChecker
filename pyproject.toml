@@ -2,12 +2,13 @@
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
-# [tool.pytest.ini_options]
+[tool.pytest.ini_options]
 # pythonpath = ["."]
+# pythonpath = 'ad_checker'
 # addopts = "--ignore=path"
 
 [tool.pyright]
-executionEnvironments = [{ root = "src" }]
+# executionEnvironments = [{ root = "src" }]
 typeCheckingMode = "standard"
 venv = ".venv"
 venvPath = "."

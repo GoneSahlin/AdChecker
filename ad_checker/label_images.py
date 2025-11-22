@@ -17,10 +17,11 @@ def images_to_label(channel_name):
     sql = '''
         select image_id, content
         from images
-        where label is null
+        -- where label is null
+        where label = 'other' 
             and channel_name = ?
         order by timestamp
-        limit 100
+        limit 1000
         '''
 
     cur.execute(sql, (channel_name,))
@@ -69,6 +70,10 @@ def label_images(channel_name):
             input_mapping_dict = {
                 'a': 'ad',
                 'f': 'football',
+                'b': 'basketball',
+                'r': 'racing',
+                's': 'soccer',
+                't': 'talk',
                 'o': 'other',
             }
 

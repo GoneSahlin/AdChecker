@@ -17,8 +17,8 @@ def images_to_label(channel_name):
     sql = '''
         select image_id, content
         from images
-        -- where label is null
-        where label = 'other' 
+        where label is null
+        -- where label = 'other' 
             and channel_name = ?
         order by timestamp
         limit 1000
@@ -31,15 +31,16 @@ def images_to_label(channel_name):
     return rows
 
 
-def insert_labels(labels_dict: dict[int, str]):
+def insert_labels(labels_dict: dict[int, dict[str, str]]):
     """Store labels_dict (image_id, label) in db"""
-    rows = [(item[1], item[0]) for item in labels_dict.items()]
+    rows = [(item[1]['label'], item[1]['timestamp'], item[0]) for item in labels_dict.items()]
 
     conn = database.connect()
     
     sql = '''
         update Images
-        set label = ?
+        set label = ?,
+        set label_timestamp = ?
         where image_id = ?
         '''
 
@@ -52,7 +53,7 @@ def label_images(channel_name):
     logger.info('Getting images to label')
     images = images_to_label(channel_name)
 
-    labels_dict = {}
+    rows_dict = {}
 
     logger.info('Displaying images')
     i = 0
@@ -74,10 +75,11 @@ def label_images(channel_name):
                 'r': 'racing',
                 's': 'soccer',
                 't': 'talk',
+                'e': 'esports',
                 'o': 'other',
             }
 
-            while chr(key_pressed) not in input_mapping_dict.keys() and chr(key_pressed) not in ['q', 'u']:
+            while chr(key_pressed) not in input_mapping_dict.keys() and chr(key_pressed) not in ['q', 'u', 'n']:
                 key_pressed = cv.waitKey(0)
 
             if key_pressed == ord('q'):
@@ -85,12 +87,16 @@ def label_images(channel_name):
             elif key_pressed == ord('u'):
                 i -= 1
                 continue
+            elif key_pressed == ord('n'):
+                logger.info('Skipping image')
+                i += 1
+                continue
             else:
                 label = input_mapping_dict[chr(key_pressed)]
 
-            # save label to dict
+            # save row to dict
             logger.info(f'Labeling image {image_id} as {label}')
-            labels_dict[image_id] = label
+            rows_dict[image_id] = {'label': label, 'timestamp': datetime.now()}
 
             i += 1
         except AssertionError as e:
@@ -98,8 +104,7 @@ def label_images(channel_name):
 
     # save labels to db
     logger.info('Saving labels to db')
-    insert_labels(labels_dict)
-
+    insert_labels(rows_dict)
 
 
 if __name__ == '__main__':

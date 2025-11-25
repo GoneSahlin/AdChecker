@@ -1,10 +1,12 @@
 VENV = .venv
 MODULE = ad_checker
+PROJECT = $(shell basename $(CURDIR))
 
 $(VENV): setup.cfg pyproject.toml
 	python3 -m venv $(VENV)
 	$(VENV)/bin/pip install -e .[dev]
 	touch $(VENV)
+	$(VENV)/bin/python3 -m ipykernel install --user --name $(PROJECT)	
 
 .PHONY: capture_images
 capture_images: $(VENV)

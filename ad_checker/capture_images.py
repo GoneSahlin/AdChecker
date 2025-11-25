@@ -28,6 +28,9 @@ def capture_images():
                 m3u = utils.find_m3u(url)
                 m3u_url = base_url + '/' + m3u
 
+                print(m3u_url)
+                return
+
                 ts = utils.find_ts(m3u_url)
                 ts_url = base_url + '/' + ts
 

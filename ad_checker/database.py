@@ -83,7 +83,7 @@ def create_database(conn):
 
     conn.commit()
 
-    logger.info('Images table created')
+    logger.info('Tables created')
 
     conn.close()
 

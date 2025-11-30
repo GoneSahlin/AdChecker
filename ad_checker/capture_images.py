@@ -15,21 +15,22 @@ def capture_images():
 
     while True:
         try:
-            response = requests.get('https://iptv-org.github.io/iptv/index.m3u')
-
+            # response = requests.get('https://iptv-org.github.io/iptv/index.m3u')
+            response = requests.get('https://livetv-fa.tubi.video/whio2/playlist.m3u8')
 
             if response.status_code == 200:
                 # getting image
-                channel_name = 'fox_sports_1'
+                channel_name = 'cbs_7_seattle_wa'
+                
+                logger.info(response.text)
 
                 url = utils.find_channel(response.text, channel_name)
                 base_url = '/'.join(url.split('/')[:-1])
+                logger.info(f'Found url: {base_url}')
 
                 m3u = utils.find_m3u(url)
                 m3u_url = base_url + '/' + m3u
-
-                print(m3u_url)
-                return
+                logger.info(f'Found m3u: {m3u_url}')
 
                 ts = utils.find_ts(m3u_url)
                 ts_url = base_url + '/' + ts
@@ -41,6 +42,7 @@ def capture_images():
                 # writing image
                 dirpath = os.path.join('data', 'captured_images', channel_name)
                 if not os.path.exists(dirpath):
+                    logger.info(f'Creating directory: {dirpath}')
                     os.mkdir(dirpath)
 
                 time_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')

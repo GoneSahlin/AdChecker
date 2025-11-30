@@ -4,6 +4,9 @@ import logging
 import os
 import numpy as np
 
+import database
+
+
 logger = logging.getLogger('__main__')
 
 
@@ -53,6 +56,22 @@ def find_m3u(url):
 
     else:
         raise Exception(f'Request failed with code {response.status_code}') 
+
+
+def get_m3u(channel_name):
+    conn = database.connect()
+    cur = conn.cursor()
+
+    sql = '''
+        select m3u
+        from Channels
+        where channel_name = ?
+        '''
+    
+    cur.execute(sql, channel_name)
+    m3u = cur.fetchone()
+
+    return m3u
 
 
 def find_ts(url):

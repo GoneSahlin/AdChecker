@@ -20,6 +20,10 @@ label_images: $(VENV)
 database: $(VENV)
 	$(VENV)/bin/python3 $(MODULE)/database.py
 
+.PHONY: explore_channels
+explore_channels: $(VENV)
+	$(VENV)/bin/python3 $(MODULE)/explore_channels.py
+
 .PHONY: test
 test: $(VENV)
 	$(VENV)/bin/pytest

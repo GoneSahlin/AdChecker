@@ -1,4 +1,4 @@
-import cv2 as cv
+import cv3 as cv
 import requests
 from datetime import datetime
 import os

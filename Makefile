@@ -24,6 +24,10 @@ database: $(VENV)
 explore_channels: $(VENV)
 	$(VENV)/bin/python3 $(MODULE)/explore_channels.py
 
+.PHONY: search_streams
+search_streams: $(VENV)
+	$(VENV)/bin/python3 $(MODULE)/search_streams.py
+
 .PHONY: test
 test: $(VENV)
 	$(VENV)/bin/pytest

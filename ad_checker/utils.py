@@ -5,11 +5,10 @@ import os
 import numpy as np
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('__main__')
 
 
 def setup_logging(filename, name=__name__):
-
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
 
@@ -67,6 +66,7 @@ def find_ts(url):
         if not ts_lines:
             raise Exception(f'Unable to find m3u in response text:\n{response.text}')
 
+        logger.debug(lines)
         most_recent_ts = sorted(ts_lines)[-1]
 
         return most_recent_ts.strip()

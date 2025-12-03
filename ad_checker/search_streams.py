@@ -9,13 +9,13 @@ from ad_checker import utils
 logger = utils.setup_logging('search_streams', __name__)
 
 
-def nfl_streams_page():
+def league_streams_page(league):
 
     base_url = 'https://crackstreams.cfd/'
-    nfl_streams_page_url = base_url + 'league/nfl-streams'
+    league_streams_page_url = base_url + 'league/' + league
 
-    logger.info('Getting nfl streams page')
-    response = requests.get(nfl_streams_page_url)
+    logger.info('Getting {league} league streams page')
+    response = requests.get(league_streams_page_url)
 
     stream_page_urls = []
     if response.status_code == 200:
@@ -28,7 +28,7 @@ def nfl_streams_page():
                 stream_page_urls.append(stream_page_url)
 
     else:
-        logger.error('Failed to get nfl streams page, status code: {response.status_code}')
+        logger.error('Failed to get {league} league streams page, status code: {response.status_code}')
 
     logger.info(f'Found {len(stream_page_urls)} stream page urls')
 
@@ -74,9 +74,12 @@ def get_playlist_m3us(channel):
 def main():
     logger.info('Starting')
 
-    stream_page_urls = nfl_streams_page()
+    # league = 'nfl-streams'
+    league = 'nba'
 
-    for stream_page_url in stream_page_urls:
+    stream_page_urls = league_streams_page(league)
+
+    for stream_page_url in reversed(stream_page_urls):
         channel = stream_page(stream_page_url)
 
         if channel:
@@ -92,17 +95,25 @@ def main():
                     ts_url = utils.find_ts(m3u)
                     logger.info(f'Found ts from m3u: {m3u}')
                     print(ts_url)
+                    
+                    try:
+                        vc = cv.VideoCapture(ts_url)
 
-                    vc = cv.VideoCapture(ts_url)
+                        frame = utils.get_latest_frame(vc)
 
-                    frame = utils.get_latest_frame(vc)
+                        cv.imshow('frame', frame)
+                        cv.waitKey()
+                    except Exception as e:
+                        logger.error(f'Failed to display latest frame:\n{e}')
 
-                    cv.imshow('frame', frame)
-                    cv.waitKey()
+                        with open('test/data/get_latest_frame_test.ts', 'wb') as f:
+                            response = requests.get(ts_url)
+                            if response.status_code == 200:
+                                print(response.text)
+                                # f.write(response.content)
 
-                    break
+                        exit()
 
-        break
 
 if __name__ == '__main__':
     main()

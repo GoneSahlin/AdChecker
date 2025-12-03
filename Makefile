@@ -28,11 +28,16 @@ explore_channels: $(VENV)
 search_streams: $(VENV)
 	$(VENV)/bin/python3 $(MODULE)/search_streams.py
 
+
 .PHONY: test
 test: $(VENV)
 	$(VENV)/bin/pytest
 	# $(VENV)/bin/pytest $(MODULE)
 	# $(VENV)/bin/python3 -m unittest discover test
+
+.PHONY: test_no_capture
+test_no_capture: $(VENV)
+	$(VENV)/bin/pytest -s
 
 .PHONY: lint
 lint: $(VENV)

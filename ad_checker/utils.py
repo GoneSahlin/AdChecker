@@ -5,7 +5,7 @@ import os
 import numpy as np
 
 
-logger = logging.getLogger('__main__')
+logger = logging.getLogger(__name__)
 
 
 def setup_logging(filename, name=__name__):
@@ -76,12 +76,23 @@ def find_ts(url):
 
 
 def get_latest_frame(vc):
+    logger.debug(f'Starting get_latest_frame')
     num_frames = int(vc.get(cv.CAP_PROP_FRAME_COUNT))
+    logger.debug(f'num_frames: {num_frames}')
 
-    for _ in range(num_frames - 1):
-        _ = vc.grab()
+    vc.set(cv.CAP_PROP_POS_FRAMES, num_frames - 10)
 
-    _, frame = vc.retrieve()
+    ret, frame = vc.read()
+
+    # flag = 0
+    # for _ in range(num_frames - 1):
+    #     ret = vc.grab()
+    #     logger.debug(ret)
+    #     if not ret:
+    #         flag = -1
+    #         break
+
+    # _, frame = vc.retrieve(flag=10)
 
     return frame
 

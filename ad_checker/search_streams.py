@@ -2,19 +2,21 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import cv2 as cv
+from datetime import datetime
+import io
+import os
 
 from ad_checker import utils
 
 
 logger = utils.setup_logging('search_streams', __name__)
 
-
 def league_streams_page(league):
 
     base_url = 'https://crackstreams.cfd/'
     league_streams_page_url = base_url + 'league/' + league
 
-    logger.info('Getting {league} league streams page')
+    logger.info(f'Getting {league} league streams page')
     response = requests.get(league_streams_page_url)
 
     stream_page_urls = []
@@ -79,7 +81,7 @@ def main():
 
     stream_page_urls = league_streams_page(league)
 
-    for stream_page_url in reversed(stream_page_urls):
+    for stream_page_url in stream_page_urls:
         channel = stream_page(stream_page_url)
 
         if channel:
@@ -93,26 +95,41 @@ def main():
 
                     logger.info(f'Getting ts from m3u: {m3u}')
                     ts_url = utils.find_ts(m3u)
-                    logger.info(f'Found ts from m3u: {m3u}')
-                    print(ts_url)
+                    logger.info(f'Found ts url: {ts_url}')
                     
                     try:
-                        vc = cv.VideoCapture(ts_url)
+                        start_time = datetime.now()
+
+                        ts_response = requests.get(ts_url)
+                        if ts_response.status_code == 200:
+                            # ts_bytes = io.BytesIO(ts_response.content)
+
+                            tmp_path = os.path.join('/tmp', 'ad_checker', ts_url.removeprefix('https://'))
+                            os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+                            with open(tmp_path, 'wb') as f:
+                                response = requests.get(ts_url)
+                                f.write(response.content)
+                                logger.info('Retrieved and saved ts file into temp path: {tmp_path}')
+
+                        else:
+                            logger.error('Failed to retrieve and save ts file')
+                            raise Exception('Failed to retrieve and save ts file')
+                        
+
+                        vc = cv.VideoCapture(tmp_path)
+
+                        # vc = cv.VideoCapture(ts_url)
+                        middle_time = datetime.now()
+                        logger.info(f'VideoCapure time: {middle_time - start_time}')
 
                         frame = utils.get_latest_frame(vc)
+                        end_time = datetime.now()
+                        logger.info(f'latest frame time: {end_time - middle_time}')
 
-                        cv.imshow('frame', frame)
-                        cv.waitKey()
+                        print(frame.size)
+
                     except Exception as e:
-                        logger.error(f'Failed to display latest frame:\n{e}')
-
-                        with open('test/data/get_latest_frame_test.ts', 'wb') as f:
-                            response = requests.get(ts_url)
-                            if response.status_code == 200:
-                                print(response.text)
-                                # f.write(response.content)
-
-                        exit()
+                        logger.error(f'Failed to process m3u: {m3u}, {e}')
 
 
 if __name__ == '__main__':

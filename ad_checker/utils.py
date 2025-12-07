@@ -5,10 +5,11 @@ import os
 import numpy as np
 
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger('__main__.utils')
+logger = logging.getLogger()
 
 
-def setup_logging(filename, name=__name__):
+def setup_logging(filename, name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
 
@@ -80,19 +81,16 @@ def get_latest_frame(vc):
     num_frames = int(vc.get(cv.CAP_PROP_FRAME_COUNT))
     logger.debug(f'num_frames: {num_frames}')
 
-    vc.set(cv.CAP_PROP_POS_FRAMES, num_frames - 10)
-
+    vc.set(cv.CAP_PROP_POS_FRAMES, num_frames - 1)
     ret, frame = vc.read()
 
-    # flag = 0
-    # for _ in range(num_frames - 1):
-    #     ret = vc.grab()
-    #     logger.debug(ret)
-    #     if not ret:
-    #         flag = -1
-    #         break
+    frames_from_end = 0
+    while not ret:
+        logger.debug(f'Failed to read frame, moving back')
+        frames_from_end += 1
 
-    # _, frame = vc.retrieve(flag=10)
+        vc.set(cv.CAP_PROP_POS_FRAMES, num_frames - 1 - frames_from_end)
+        ret, frame = vc.read()
 
     return frame
 

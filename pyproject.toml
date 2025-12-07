@@ -6,6 +6,10 @@ build-backend = "setuptools.build_meta"
 # pythonpath = ["."]
 # pythonpath = 'ad_checker'
 # addopts = "--ignore=path"
+log_file = "logs/test.log"
+log_level = "DEBUG"
+log_format = "%(asctime)s %(levelname)s %(message)s"
+log_date_format = "%Y-%m-%d %H:%M:%S"
 
 [tool.pyright]
 # executionEnvironments = [{ root = "src" }]

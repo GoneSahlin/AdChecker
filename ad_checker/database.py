@@ -1,10 +1,15 @@
 import sqlite3
 from datetime import datetime
 import os
+import logging
 
 from ad_checker import utils
 
-logger = utils.setup_logging(__name__)
+if __name__ == '__main__':
+    logger = utils.setup_logging('database', __name__)
+else:
+    logger = logging.getLogger()
+
 
 DB_NAME = 'data.db'
 DB_PATH = os.path.join('data', 'data.db')
@@ -86,22 +91,6 @@ def create_database(conn):
     logger.info('Tables created')
 
     conn.close()
-
-
-def get_m3u(channel_name):
-    conn = connect()
-    cur = conn.cursor()
-
-    sql = '''
-        select m3u
-        from Channels
-        where channel_name = ?
-        '''
-    
-    cur.execute(sql, (channel_name,))
-    m3u = cur.fetchone()[0]
-
-    return m3u
 
 
 if __name__ == '__main__':

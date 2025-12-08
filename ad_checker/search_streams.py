@@ -7,6 +7,7 @@ import io
 import os
 
 from ad_checker import utils
+from ad_checker.stream_poller import StreamPoller
 
 
 logger = utils.setup_logging('search_streams', __name__)
@@ -72,15 +73,20 @@ def get_playlist_m3us(channel):
     else:
         logger.error(f'Failed to get playlist_m3us for channel {channel}, status code: {response.status_code}')
 
+# stream page -> channels
+# split on channels
+    # channel -> playlist_m3us
+    # playlist_m3u -> m3u -> ts -> frame
 
 def main():
     logger.info('Starting')
 
-    # league = 'nfl-streams'
-    league = 'nba'
+    league = 'nfl-streams'
+    # league = 'nba'
 
     stream_page_urls = league_streams_page(league)
 
+    frames_dict = {}
     for stream_page_url in stream_page_urls:
         channel = stream_page(stream_page_url)
 
@@ -89,48 +95,41 @@ def main():
 
             if playlist_m3us:
                 for playlist_m3u in playlist_m3us:
-                    logger.info(f'Getting m3u from playlist_m3u: {playlist_m3u}')
-                    m3u = utils.find_m3u(playlist_m3u)
-                    logger.info(f'Found m3u from playlist_m3u: {playlist_m3u}')
-
-                    logger.info(f'Getting ts from m3u: {m3u}')
-                    ts_url = utils.find_ts(m3u)
-                    logger.info(f'Found ts url: {ts_url}')
-                    
                     try:
-                        start_time = datetime.now()
+                        logger.info(f'Getting m3u from playlist_m3u: {playlist_m3u}')
+                        m3u = utils.find_m3u(playlist_m3u)
+                        logger.info(f'Found m3u from playlist_m3u: {playlist_m3u}')
 
-                        ts_response = requests.get(ts_url)
-                        if ts_response.status_code == 200:
-                            # ts_bytes = io.BytesIO(ts_response.content)
+                        poller = StreamPoller(m3u)
+                        poller.poll()
 
-                            tmp_path = os.path.join('/tmp', 'ad_checker', ts_url.removeprefix('https://'))
-                            os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
-                            with open(tmp_path, 'wb') as f:
-                                response = requests.get(ts_url)
-                                f.write(response.content)
-                                logger.info('Retrieved and saved ts file into temp path: {tmp_path}')
 
-                        else:
-                            logger.error('Failed to retrieve and save ts file')
-                            raise Exception('Failed to retrieve and save ts file')
-                        
-
-                        vc = cv.VideoCapture(tmp_path)
-
-                        # vc = cv.VideoCapture(ts_url)
-                        middle_time = datetime.now()
-                        logger.info(f'VideoCapure time: {middle_time - start_time}')
-
-                        frame = utils.get_latest_frame(vc)
-                        end_time = datetime.now()
-                        logger.info(f'latest frame time: {end_time - middle_time}')
-
-                        print(frame.size)
-
+                        # logger.info(f'Getting ts from m3u: {m3u}')
+                        # ts_url = utils.find_ts(m3u)
+                        # logger.info(f'Found ts url: {ts_url}')
+                        #
+                        # ts_response = requests.get(ts_url)
+                        # if ts_response.status_code == 200:
+                        #     tmp_path = os.path.join('/tmp', 'GoneSahlin', 'ad_checker', ts_url.removeprefix('https://'))
+                        #     os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+                        #     with open(tmp_path, 'wb') as f:
+                        #         response = requests.get(ts_url)
+                        #         f.write(response.content)
+                        #         logger.info('Retrieved and saved ts file into temp path: {tmp_path}')
+                        #
+                        # else:
+                        #     logger.error('Failed to retrieve and save ts file')
+                        #     raise Exception('Failed to retrieve and save ts file')
+                        #
+                        # vc = cv.VideoCapture(tmp_path)
+                        #
+                        # frame = utils.get_latest_frame(vc)
+                        # frames_dict[stream_page_url] = frame
+                        #
                     except Exception as e:
-                        logger.error(f'Failed to process m3u: {m3u}, {e}')
+                        logger.error(f'Failed to process playlist_m3u: {playlist_m3u}, {e}')
 
+    logger.info(frames_dict)
 
 if __name__ == '__main__':
     main()

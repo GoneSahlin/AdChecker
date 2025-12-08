@@ -4,9 +4,7 @@ import logging
 
 from ad_checker import utils
 
-# logger = utils.setup_logging('test_utils', __name__)
 logger = logging.getLogger()
-logger.info('testing logger')
 
 def test_get_latest_frame():
     logger.info('Starting test_get_latest_frame')

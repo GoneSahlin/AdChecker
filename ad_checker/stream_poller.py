@@ -41,3 +41,6 @@ async def poll_ts_file(poll_queue: asyncio.PriorityQueue, decode_queue: asyncio.
         else:
             logger.error(f'Failed to get ts file, status code: {ts_response.status_code}')
 
+    poll_queue.task_done()
+
+

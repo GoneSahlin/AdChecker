@@ -5,9 +5,10 @@ import cv2 as cv
 from datetime import datetime
 import io
 import os
+import asyncio
 
 from ad_checker import utils
-from ad_checker.stream_poller import StreamPoller
+from ad_checker import stream_poller 
 
 
 logger = utils.setup_logging('search_streams', __name__)
@@ -73,20 +74,16 @@ def get_playlist_m3us(channel):
     else:
         logger.error(f'Failed to get playlist_m3us for channel {channel}, status code: {response.status_code}')
 
-# stream page -> channels
-# split on channels
-    # channel -> playlist_m3us
-    # playlist_m3u -> m3u -> ts -> frame
 
-def main():
+async def main():
     logger.info('Starting')
 
     league = 'nfl-streams'
     # league = 'nba'
 
     stream_page_urls = league_streams_page(league)
-
-    frames_dict = {}
+   
+    m3u_dict = {}
     for stream_page_url in stream_page_urls:
         channel = stream_page(stream_page_url)
 
@@ -100,37 +97,32 @@ def main():
                         m3u = utils.find_m3u(playlist_m3u)
                         logger.info(f'Found m3u from playlist_m3u: {playlist_m3u}')
 
-                        poller = StreamPoller(m3u)
-                        poller.poll()
+                        m3u_dict[stream_page_url] = m3u
+                        break
 
-
-                        # logger.info(f'Getting ts from m3u: {m3u}')
-                        # ts_url = utils.find_ts(m3u)
-                        # logger.info(f'Found ts url: {ts_url}')
-                        #
-                        # ts_response = requests.get(ts_url)
-                        # if ts_response.status_code == 200:
-                        #     tmp_path = os.path.join('/tmp', 'GoneSahlin', 'ad_checker', ts_url.removeprefix('https://'))
-                        #     os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
-                        #     with open(tmp_path, 'wb') as f:
-                        #         response = requests.get(ts_url)
-                        #         f.write(response.content)
-                        #         logger.info('Retrieved and saved ts file into temp path: {tmp_path}')
-                        #
-                        # else:
-                        #     logger.error('Failed to retrieve and save ts file')
-                        #     raise Exception('Failed to retrieve and save ts file')
-                        #
-                        # vc = cv.VideoCapture(tmp_path)
-                        #
-                        # frame = utils.get_latest_frame(vc)
-                        # frames_dict[stream_page_url] = frame
-                        #
                     except Exception as e:
                         logger.error(f'Failed to process playlist_m3u: {playlist_m3u}, {e}')
 
-    logger.info(frames_dict)
+
+    # set up producers and consumers
+    logger.info(f'Setting up producers and consumers, m3u_dict: {m3u_dict}')
+    poll_queue = asyncio.PriorityQueue()
+    decode_queue = asyncio.Queue()
+
+    tasks = []
+    for _ in range(3):
+        task = asyncio.create_task(stream_poller.poll_ts_file(poll_queue, decode_queue))
+        tasks.append(task)
+
+    await asyncio.sleep(60)
+    for task in tasks:
+        task.cancel()
+
+    print(poll_queue)
+    print(decode_queue)
+
+    
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
 

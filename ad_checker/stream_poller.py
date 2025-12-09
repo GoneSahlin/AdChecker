@@ -2,6 +2,8 @@ import requests
 import logging
 import os
 import cv2 as cv
+import asyncio
+from datetime import datetime, timedelta
 
 from ad_checker import utils
 
@@ -9,36 +11,33 @@ from ad_checker import utils
 logger = logging.getLogger()
 
 
-class StreamPoller:
-    def __init__(self, m3u):
-        self.m3u = m3u
+async def poll_ts_file(poll_queue: asyncio.PriorityQueue, decode_queue: asyncio.Queue):
+    _, m3u, latest_ts_file = await poll_queue.get()
 
-        self.latest_ts_file = None
+    ts_url = utils.find_ts(m3u)
 
-    def poll(self):
-        ts_url = utils.find_ts(self.m3u)
+    if latest_ts_file and latest_ts_file == ts_url:
+        # no new ts file
+        timestamp = (datetime.now() - timedelta(seconds=1)).timestamp()  # wait 1 second
 
-        if self.latest_ts_file and self.latest_ts_file == ts_url:
-            # no new ts file
-            pass
+        await poll_queue.put((timestamp, m3u, ts_url))
+    else:
+        ts_response = requests.get(ts_url)
+
+        if ts_response.status_code == 200:
+            # save ts file into tmp
+            tmp_path = os.path.join('/tmp', 'GoneSahlin', 'ad_checker', ts_url.removeprefix('https://'))
+            os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+            with open(tmp_path, 'wb') as f:
+                response = requests.get(ts_url)
+                f.write(response.content)
+                logger.info('Retrieved and saved ts file into tmp path: {tmp_path}')
+
+            # create new jobs
+            timestamp = (datetime.now() - timedelta(seconds=5)).timestamp()  # wait 5 seconds
+            await poll_queue.put((m3u, ts_url))
+            await decode_queue.put(tmp_path)
+
         else:
-            ts_response = requests.get(ts_url)
-
-            if ts_response.status_code == 200:
-                # save ts file into tmp
-                tmp_path = os.path.join('/tmp', 'GoneSahlin', 'ad_checker', ts_url.removeprefix('https://'))
-                os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
-                with open(tmp_path, 'wb') as f:
-                    response = requests.get(ts_url)
-                    f.write(response.content)
-                    logger.info('Retrieved and saved ts file into tmp path: {tmp_path}')
-
-                vc = cv.VideoCapture(tmp_path)
-                frame = utils.get_latest_frame(vc)
-
-                cv.imshow('frame', frame)
-                cv.waitKey()
-
-            else:
-                logger.error(f'Failed to get ts file, status code: {ts_response.status_code}')
+            logger.error(f'Failed to get ts file, status code: {ts_response.status_code}')
 

@@ -1,11 +1,12 @@
 import cv2 as cv
 import requests
-import logging
 import os
 import numpy as np
+import logging
+import logging.handlers
+import queue
 
 
-# logger = logging.getLogger('__main__.utils')
 logger = logging.getLogger()
 
 
@@ -28,6 +29,36 @@ def setup_logging(filename, name):
     logger.addHandler(file_handler)
 
     return logger
+
+
+def setup_async_logging(filename):
+    """Sets up the non-blocking logging configuration."""
+    
+    formatter = logging.Formatter('%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s')
+    
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.INFO)
+
+    log_path = os.path.join('logs', filename)
+    file_handler = logging.FileHandler(log_path)
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.DEBUG)
+    
+    handlers = [console_handler, file_handler]
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+
+    log_queue = queue.Queue(-1)
+
+    queue_handler = logging.handlers.QueueHandler(log_queue)
+    root_logger.addHandler(queue_handler)
+
+    listener = logging.handlers.QueueListener(log_queue, *handlers)
+    listener.start()
+    
+    return listener, root_logger
 
 
 def find_channel(text, key):

@@ -6,12 +6,11 @@ from datetime import datetime
 import io
 import os
 import asyncio
+import logging
 
 from ad_checker import utils
 from ad_checker import stream_poller 
 
-
-logger = utils.setup_logging('search_streams', __name__)
 
 def league_streams_page(league):
 
@@ -78,8 +77,8 @@ def get_playlist_m3us(channel):
 async def main():
     logger.info('Starting')
 
-    league = 'nfl-streams'
-    # league = 'nba'
+    # league = 'nfl-streams'
+    league = 'nba'
 
     stream_page_urls = league_streams_page(league)
    
@@ -109,20 +108,32 @@ async def main():
     poll_queue = asyncio.PriorityQueue()
     decode_queue = asyncio.Queue()
 
+    # load poll queue with m3us
+    for stream_page_url, m3u in m3u_dict.items():
+        await poll_queue.put((datetime.now().timestamp(), m3u, None))
+
     tasks = []
-    for _ in range(3):
-        task = asyncio.create_task(stream_poller.poll_ts_file(poll_queue, decode_queue))
+    for poller_id in range(3):
+        task = asyncio.create_task(stream_poller.poll_ts_file(poller_id, poll_queue, decode_queue))
         tasks.append(task)
 
-    await asyncio.sleep(60)
+    await poll_queue.join()
     for task in tasks:
         task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
 
-    print(poll_queue)
-    print(decode_queue)
-
-    
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    listener, logger = utils.setup_async_logging('search_streams.log')
+    
+    try:
+        # Run the main coroutine
+        # asyncio.run() handles loop creation/cleanup for us
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logging.getLogger().info("Application shutdown.")
+    finally:
+        # Crucial: Stop the listener thread gracefully on exit
+        listener.stop()
+        print("\nLogging listener stopped. Program terminated.")
 

@@ -48,7 +48,7 @@ def setup_async_logging(filename):
     handlers = [console_handler, file_handler]
 
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG)
+    root_logger.setLevel(logging.INFO)
 
     log_queue = queue.Queue(-1)
 

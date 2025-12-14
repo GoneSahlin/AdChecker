@@ -38,7 +38,7 @@ def league_streams_page(league):
     return stream_page_urls
 
 
-def stream_page(stream_page_url):
+def stream_page(stream_page_url) -> int | None:
     logger.info(f'Getting stream page {stream_page_url}')
     response = requests.get(stream_page_url)
     if response.status_code == 200:
@@ -47,7 +47,7 @@ def stream_page(stream_page_url):
         start_index = response.text.find(key) + offset
         end_index = response.text[start_index:].find('"') + start_index
 
-        channel = response.text[start_index:end_index]
+        channel = int(response.text[start_index:end_index])
 
         logger.info(f'Found channel: {channel}')
         return channel
@@ -82,12 +82,12 @@ async def main():
 
     stream_page_urls = league_streams_page(league)
    
-    m3u_dict = {}
+    channels = []
     for stream_page_url in stream_page_urls:
-        channel = stream_page(stream_page_url)
+        channel_id = stream_page(stream_page_url)
 
-        if channel:
-            playlist_m3us = get_playlist_m3us(channel)
+        if channel_id:
+            playlist_m3us = get_playlist_m3us(channel_id)
 
             if playlist_m3us:
                 for playlist_m3u in playlist_m3us:
@@ -96,21 +96,21 @@ async def main():
                         m3u = utils.find_m3u(playlist_m3u)
                         logger.info(f'Found m3u from playlist_m3u: {playlist_m3u}')
 
-                        m3u_dict[stream_page_url] = m3u
+                        channel = stream_poller.Channel(m3u, None, channel_id)
+                        channels.append(channel)
                         break
 
                     except Exception as e:
                         logger.error(f'Failed to process playlist_m3u: {playlist_m3u}, {e}')
 
-
     # set up producers and consumers
-    logger.info(f'Setting up producers and consumers, m3u_dict: {m3u_dict}')
+    logger.info(f'Setting up producers and consumers, channels: {channels}')
     poll_queue = asyncio.PriorityQueue()
     decode_queue = asyncio.Queue()
 
-    # load poll queue with m3us
-    for stream_page_url, m3u in m3u_dict.items():
-        await poll_queue.put((datetime.now().timestamp(), m3u, None))
+    # load poll queue with channels
+    for channel in channels:
+        await poll_queue.put((datetime.now().timestamp(), channel))
 
     tasks = []
     for poller_id in range(3):
@@ -127,13 +127,10 @@ if __name__ == '__main__':
     listener, logger = utils.setup_async_logging('search_streams.log')
     
     try:
-        # Run the main coroutine
-        # asyncio.run() handles loop creation/cleanup for us
         asyncio.run(main())
     except KeyboardInterrupt:
         logging.getLogger().info("Application shutdown.")
     finally:
-        # Crucial: Stop the listener thread gracefully on exit
         listener.stop()
         print("\nLogging listener stopped. Program terminated.")
 

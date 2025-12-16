@@ -76,7 +76,7 @@ def get_playlist_m3us(channel):
 
 async def get_channel(stream_page_url: str) -> stream_poller.Channel | None:
     logger.info(f'Getting channel for {stream_page_url}')
-    channel_id = stream_page(stream_page_url)
+    channel_id = await asyncio.to_thread(stream_page, stream_page_url)
 
     if channel_id:
         playlist_m3us = get_playlist_m3us(channel_id)
@@ -85,7 +85,7 @@ async def get_channel(stream_page_url: str) -> stream_poller.Channel | None:
             for playlist_m3u in playlist_m3us:
                 try:
                     logger.debug(f'Getting m3u from playlist_m3u: {playlist_m3u}')
-                    m3u = utils.find_m3u(playlist_m3u)
+                    m3u = await asyncio.to_thread(utils.find_m3u, playlist_m3u)
                     logger.debug(f'Found m3u from playlist_m3u: {playlist_m3u}')
 
                     channel = stream_poller.Channel(m3u, None, channel_id)
@@ -110,7 +110,7 @@ async def main():
             get_channel_tasks.append(tg.create_task(get_channel(stream_page_url)))
 
     channels = [get_channel_task.result() for get_channel_task in get_channel_tasks]
-
+    logger.info(f'Found {len(channels)} channels: {channels}')
 
     # set up producers and consumers
     logger.info(f'Setting up producers and consumers, channels: {channels}')

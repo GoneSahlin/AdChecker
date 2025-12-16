@@ -43,6 +43,7 @@ async def poll_ts_file(poller_id: int, poll_queue: asyncio.PriorityQueue[tuple[f
             if ts_response.status_code == 200:
                 # save ts file into tmp
                 tmp_path = os.path.join('/tmp', 'GoneSahlin', 'ad_checker', ts_url.removeprefix('https://'))
+                tmp_path = os.path.join('/tmp', 'GoneSahlin', 'ad_checker', str(channel.channel_id), ts_url.split('/')[-1])
                 os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
                 with open(tmp_path, 'wb') as f:
                     response = requests.get(ts_url)
@@ -50,13 +51,15 @@ async def poll_ts_file(poller_id: int, poll_queue: asyncio.PriorityQueue[tuple[f
                     logger.info(f'Retrieved and saved ts file into tmp path: {tmp_path}')
 
                 # create new jobs
-                timestamp = (datetime.now() - timedelta(seconds=5)).timestamp()  # wait 5 seconds
+                timestamp = (datetime.now() - timedelta(seconds=3)).timestamp()  # wait 5 seconds
                 channel.latest_ts_file = ts_url
                 await poll_queue.put((timestamp, channel))
                 await decode_queue.put(tmp_path)
 
             else:
                 logger.error(f'Failed to get ts file, status code: {ts_response.status_code}')
+                timestamp = (datetime.now() + timedelta(seconds=1)).timestamp()  # wait 1 second
+                await poll_queue.put((timestamp, channel))
 
         poll_queue.task_done()
 

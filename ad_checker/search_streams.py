@@ -74,6 +74,28 @@ def get_playlist_m3us(channel):
         logger.error(f'Failed to get playlist_m3us for channel {channel}, status code: {response.status_code}')
 
 
+async def get_channel(stream_page_url: str) -> stream_poller.Channel | None:
+    logger.info(f'Getting channel for {stream_page_url}')
+    channel_id = stream_page(stream_page_url)
+
+    if channel_id:
+        playlist_m3us = get_playlist_m3us(channel_id)
+
+        if playlist_m3us:
+            for playlist_m3u in playlist_m3us:
+                try:
+                    logger.debug(f'Getting m3u from playlist_m3u: {playlist_m3u}')
+                    m3u = utils.find_m3u(playlist_m3u)
+                    logger.debug(f'Found m3u from playlist_m3u: {playlist_m3u}')
+
+                    channel = stream_poller.Channel(m3u, None, channel_id)
+
+                    return channel
+
+                except Exception as e:
+                    logger.error(f'Failed to process playlist_m3u: {playlist_m3u}, {e}')
+
+
 async def main():
     logger.info('Starting')
 
@@ -81,27 +103,14 @@ async def main():
     league = 'nba'
 
     stream_page_urls = league_streams_page(league)
-   
-    channels = []
-    for stream_page_url in stream_page_urls:
-        channel_id = stream_page(stream_page_url)
 
-        if channel_id:
-            playlist_m3us = get_playlist_m3us(channel_id)
+    get_channel_tasks = []
+    async with asyncio.TaskGroup() as tg:
+        for stream_page_url in stream_page_urls:
+            get_channel_tasks.append(tg.create_task(get_channel(stream_page_url)))
 
-            if playlist_m3us:
-                for playlist_m3u in playlist_m3us:
-                    try:
-                        logger.info(f'Getting m3u from playlist_m3u: {playlist_m3u}')
-                        m3u = utils.find_m3u(playlist_m3u)
-                        logger.info(f'Found m3u from playlist_m3u: {playlist_m3u}')
+    channels = [get_channel_task.result() for get_channel_task in get_channel_tasks]
 
-                        channel = stream_poller.Channel(m3u, None, channel_id)
-                        channels.append(channel)
-                        break
-
-                    except Exception as e:
-                        logger.error(f'Failed to process playlist_m3u: {playlist_m3u}, {e}')
 
     # set up producers and consumers
     logger.info(f'Setting up producers and consumers, channels: {channels}')
@@ -125,7 +134,7 @@ async def main():
 
 if __name__ == '__main__':
     listener, logger = utils.setup_async_logging('search_streams.log')
-    
+
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
